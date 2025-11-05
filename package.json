@@ -1,6 +1,6 @@
 {
   "name": "string-marker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "packageManager": "pnpm@10.13.1",
   "description": "A utility for managing content in a file between markers.",
   "keywords": [
@@ -59,5 +59,8 @@
     "node": ">=20.19.5",
     "pnpm": ">=10.13.1"
   },
-  "engineStrict": true
+  "engineStrict": true,
+  "dependencies": {
+    "tslib": "^2.8.1"
+  }
 }
