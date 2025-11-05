@@ -15,12 +15,31 @@ export default class Marker {
         this.startTag = startTag;
     }
 
-    private async _getContents(): Promise<string> {
+    async create(empty = false): Promise<void> {
+        const current = await this.getCurrent();
+
+        if (current === null) {
+            const lines = await this.getLines();
+            if (lines.length !== 0 && !/^\s*$/.test(lines.at(-1)!)) lines.push("");
+            lines.push(this.startTag, this.endTag);
+            await this.write(lines.join(this.separator));
+        } else {
+            if (empty && (current[0] + 1) < current[1]) {
+                const lines = await this.getLines();
+                lines.splice(current[0] + 1, current[1] - (current[0] + 1));
+                await this.write(lines.join(this.separator));
+            }
+
+            return;
+        }
+    }
+
+    async getContents(): Promise<string> {
         return readFile(this.file, "utf8");
     }
 
-    private async _getCurrent(): Promise<[start: number, end: number] | null> {
-        const lines = await this._getLines();
+    async getCurrent(): Promise<[start: number, end: number] | null> {
+        const lines = await this.getLines();
         const startIndex = lines.indexOf(this.startTag);
         const endIndex = lines.indexOf(this.endTag);
 
@@ -36,40 +55,17 @@ export default class Marker {
         return [startIndex, endIndex];
     }
 
-    private async _getLines(): Promise<Array<string>> {
-        return (await this._getContents()).split(this.separator);
-    }
-
-    private async _write(contents: string): Promise<void> {
-        await writeFile(this.file, contents);
-    }
-
-    async create(empty = false): Promise<void> {
-        const current = await this._getCurrent();
-
-        if (current === null) {
-            const lines = await this._getLines();
-            if (lines.length !== 0 && !/^\s*$/.test(lines.at(-1)!)) lines.push("");
-            lines.push(this.startTag, this.endTag);
-            await this._write(lines.join(this.separator));
-        } else {
-            if (empty && (current[0] + 1) < current[1]) {
-                const lines = await this._getLines();
-                lines.splice(current[0] + 1, current[1] - (current[0] + 1));
-                await this._write(lines.join(this.separator));
-            }
-
-            return;
-        }
+    async getLines(): Promise<Array<string>> {
+        return (await this.getContents()).split(this.separator);
     }
 
     async remove(): Promise<void> {
-        const current = await this._getCurrent();
+        const current = await this.getCurrent();
         if (current === null) return;
 
-        const lines = await this._getLines();
+        const lines = await this.getLines();
         lines.splice(current[0], (current[1] - current[0]) + 1);
-        await this._write(lines.join(this.separator));
+        await this.write(lines.join(this.separator));
     }
 
     async update(values: string | Array<string>): Promise<void> {
@@ -77,9 +73,13 @@ export default class Marker {
 
         await this.create(true);
 
-        const lines = await this._getLines();
-        const [start] = (await this._getCurrent())!;
+        const lines = await this.getLines();
+        const [start] = (await this.getCurrent())!;
         lines.splice(start + 1, 0, ...values);
-        await this._write(lines.join(this.separator));
+        await this.write(lines.join(this.separator));
+    }
+
+    async write(contents: string): Promise<void> {
+        await writeFile(this.file, contents);
     }
 }
